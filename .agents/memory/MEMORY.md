@@ -1,0 +1,1 @@
+- [Agunnaya Studio migration patterns](agunnaya-migration.md) — Next.js→Vite migration: better-auth needs full URL, Express v5 uses {*path} wildcards, @opentelemetry must be installed as runtime dep alongside better-auth
