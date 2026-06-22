@@ -11,9 +11,9 @@ export async function requestAccount(): Promise<string | null> {
   }
 
   try {
-    const accounts = await window.ethereum.request({
+    const accounts = (await window.ethereum.request({
       method: 'eth_requestAccounts',
-    })
+    })) as string[]
     return accounts?.[0] || null
   } catch (error) {
     console.error('[v0] Error requesting account:', error)
@@ -29,7 +29,7 @@ export async function getConnectedAccount(): Promise<string | null> {
   try {
     const accounts = (await window.ethereum.request({
       method: 'eth_accounts',
-    })) as string[]
+    })) as string[] | null | undefined
     return accounts?.[0] || null
   } catch (error) {
     console.error('[v0] Error getting account:', error)
