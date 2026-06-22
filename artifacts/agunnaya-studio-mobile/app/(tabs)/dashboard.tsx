@@ -16,7 +16,7 @@ import { useAuth } from "@/context/AuthContext";
 import { AGENTS, useIDE } from "@/context/IDEContext";
 import { useColors } from "@/hooks/useColors";
 import { AglPanel } from "@/components/AglPanel";
-import { API_URL, fetchWithAuth } from "@/lib/api";
+import { fetchWithAuth } from "@/lib/api";
 
 interface AglStatus {
   wallet: string | null;

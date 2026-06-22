@@ -34,3 +34,8 @@ externalPort = 3000
 [[ports]]
 localPort = 20259
 externalPort = 80
+
+[userenv]
+
+[userenv.shared]
+AGL_TREASURY_ADDRESS = "0xFfb6505912FCE95B42be4860477201bb4e204E9f"

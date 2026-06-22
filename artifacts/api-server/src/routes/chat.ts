@@ -67,6 +67,17 @@ router.post("/chat", async (req, res) => {
     }
 
     const tier = await getEffectiveTier(u);
+
+    // PRO gate must come BEFORE any credit deduction
+    if (PREMIUM_AGENTS.has(agentId) && tier === "free") {
+      res.status(402).json({
+        error: "Pro tier required for this agent",
+        message: "The Auditor and Gas Optimizer agents require PRO tier (≥ 100 AGL).",
+        upgradeRequired: true,
+      });
+      return;
+    }
+
     const creditCost = PREMIUM_AGENTS.has(agentId) ? CREDITS.audit : CREDITS.chat;
 
     if (tier === "free") {
@@ -82,15 +93,6 @@ router.post("/chat", async (req, res) => {
         return;
       }
       await db.update(user).set({ aglCredits: credits - creditCost }).where(eq(user.id, u.id));
-    }
-
-    if (PREMIUM_AGENTS.has(agentId) && tier === "free") {
-      res.status(402).json({
-        error: "Pro tier required for this agent",
-        message: "The Auditor and Gas Optimizer agents require PRO tier (≥ 100 AGL).",
-        upgradeRequired: true,
-      });
-      return;
     }
 
     const apiKey = process.env["ANTHROPIC_API_KEY"];

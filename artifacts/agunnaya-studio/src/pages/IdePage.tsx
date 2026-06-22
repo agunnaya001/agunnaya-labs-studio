@@ -140,7 +140,9 @@ export default function IdePage() {
         body: JSON.stringify({ code, contractName, chainId: newChainId }),
       })
       const result = await response.json()
-      if (result.status === 'error') {
+      if (!response.ok) {
+        addToast(result.message ?? result.error ?? 'Deployment failed', 'error')
+      } else if (result.status === 'error') {
         addToast(result.message, 'error')
       } else if (result.txHash) {
         setDeployments([
@@ -181,7 +183,17 @@ export default function IdePage() {
         }),
       })
 
-      if (!response.ok || !response.body) throw new Error('Chat failed')
+      if (!response.ok) {
+        const errData = await response.json().catch(() => ({})) as { message?: string; error?: string }
+        const msg = errData.message ?? errData.error ?? 'Chat failed'
+        setChatMessages((prev) => [
+          ...prev,
+          { role: 'assistant', content: `⚠️ ${msg}` },
+        ])
+        setIsChatLoading(false)
+        return
+      }
+      if (!response.body) throw new Error('Chat failed')
 
       const reader = response.body.getReader()
       const decoder = new TextDecoder()
