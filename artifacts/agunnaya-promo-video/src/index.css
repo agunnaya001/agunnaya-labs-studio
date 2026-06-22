@@ -1,0 +1,81 @@
+@import "tailwindcss";
+
+:root {
+  --color-primary: #00ff41;
+  --color-accent: #a3ff47;
+  
+  --color-bg-base: #0a0a0f;
+  --color-bg-secondary: #0f0f17;
+  
+  --color-text-primary: #e0e0f0;
+  --color-text-dim: #6b6b8a;
+  --color-text-inverse: #0a0a0f;
+  
+  --font-display: 'Bebas Neue', sans-serif;
+  --font-body: 'DM Sans', sans-serif;
+  --font-mono: 'DM Mono', monospace;
+}
+
+@theme inline {
+  --color-primary: var(--color-primary);
+  --color-accent: var(--color-accent);
+  --color-bg-base: var(--color-bg-base);
+  --color-bg-secondary: var(--color-bg-secondary);
+  --color-text-primary: var(--color-text-primary);
+  --color-text-dim: var(--color-text-dim);
+  --color-text-inverse: var(--color-text-inverse);
+  
+  --font-display: var(--font-display);
+  --font-body: var(--font-body);
+  --font-mono: var(--font-mono);
+
+  --text-xs: 0.75rem;
+  --text-xs--line-height: calc(1 / 0.75);
+  --text-sm: 0.875rem;
+  --text-sm--line-height: calc(1.25 / 0.875);
+  --text-base: 1rem;
+  --text-base--line-height: calc(1.5 / 1);
+  --text-lg: 1.125rem;
+  --text-lg--line-height: calc(1.75 / 1.125);
+  --text-xl: 1.25rem;
+  --text-xl--line-height: calc(1.75 / 1.25);
+  --text-2xl: 1.5rem;
+  --text-2xl--line-height: calc(2 / 1.5);
+  --text-3xl: 1.875rem;
+  --text-3xl--line-height: calc(2.25 / 1.875);
+  --text-4xl: 2.25rem;
+  --text-4xl--line-height: calc(2.5 / 2.25);
+  --text-5xl: 3rem;
+  --text-5xl--line-height: 1;
+  --text-6xl: 3.75rem;
+  --text-6xl--line-height: 1;
+  --text-7xl: 4.5rem;
+  --text-7xl--line-height: 1;
+  --text-8xl: 6rem;
+  --text-8xl--line-height: 1;
+  --text-9xl: 8rem;
+  --text-9xl--line-height: 1;
+}
+
+body {
+  font-family: var(--font-body);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  background-color: var(--color-bg-base);
+  color: var(--color-text-primary);
+}
+
+.bg-grid-pattern {
+  background-size: 40px 40px;
+  background-image: 
+    linear-gradient(to right, rgba(0, 255, 65, 0.05) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(0, 255, 65, 0.05) 1px, transparent 1px);
+}
+
+.text-glow {
+  text-shadow: 0 0 10px rgba(0, 255, 65, 0.7), 0 0 20px rgba(0, 255, 65, 0.5);
+}
+
+.box-glow {
+  box-shadow: 0 0 15px rgba(0, 255, 65, 0.3), inset 0 0 10px rgba(0, 255, 65, 0.1);
+}

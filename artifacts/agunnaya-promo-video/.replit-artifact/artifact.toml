@@ -1,0 +1,31 @@
+kind = "video"
+previewPath = "/agunnaya-promo-video/"
+title = "Agunnaya AI Studio — Promo Video"
+version = "1.0.0"
+id = "artifacts/agunnaya-promo-video"
+router = "path"
+
+[[integratedSkills]]
+name = "video-js"
+version = "1.0.0"
+
+[[services]]
+name = "web"
+paths = [ "/agunnaya-promo-video/" ]
+localPort = 19613
+
+[services.development]
+run = "pnpm --filter @workspace/agunnaya-promo-video run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/agunnaya-promo-video", "run", "build" ]
+publicDir = "artifacts/agunnaya-promo-video/dist/public"
+serve = "static"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "19613"
+BASE_PATH = "/agunnaya-promo-video/"
