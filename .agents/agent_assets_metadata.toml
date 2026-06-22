@@ -1,0 +1,8 @@
+uploads = []
+outputs = []
+
+[[generated]]
+id = "znL3HxJ5KultxmAGWiLfw"
+uri = "file://artifacts/agunnaya-studio-mobile/assets/images/icon.png"
+type = "image"
+title = "agunnaya-mobile-icon"
