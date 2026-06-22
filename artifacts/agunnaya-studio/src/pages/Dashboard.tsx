@@ -4,6 +4,7 @@ import { authClient } from '../lib/auth-client'
 import { Logo } from '../components/Logo'
 import { FeatureRecommendations } from '../components/FeatureRecommendations'
 import { ToastNotification, Toast } from '../components/ToastNotification'
+import { AglPanel } from '../components/AglPanel'
 
 interface Project {
   id: number
@@ -243,6 +244,8 @@ export default function Dashboard() {
                 <a href="#" className="block text-[var(--text-mid)] hover:text-[var(--green)] transition-colors">→ API Reference</a>
               </div>
             </div>
+
+            <AglPanel />
 
             <div>
               <h2 className="font-display text-2xl font-bold mb-6">Recommended For You</h2>

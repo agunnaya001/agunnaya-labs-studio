@@ -4,11 +4,13 @@ import chatRouter from "./chat";
 import compileRouter from "./compile";
 import deployRouter from "./deploy";
 import authRouter from "./auth";
+import aglRouter from "./agl";
 
 const router: IRouter = Router();
 
 router.use(healthRouter);
 router.use(authRouter);
+router.use(aglRouter);
 router.use(chatRouter);
 router.use(compileRouter);
 router.use(deployRouter);

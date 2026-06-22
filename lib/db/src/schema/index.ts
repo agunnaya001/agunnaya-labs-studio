@@ -9,6 +9,10 @@ export const user = pgTable("user", {
   image: text("image"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
+  walletAddress: text("wallet_address"),
+  aglTier: text("agl_tier").default("free"),
+  aglCredits: integer("agl_credits").default(30),
+  subscriptionExpiresAt: timestamp("subscription_expires_at"),
 });
 
 export const session = pgTable("session", {
@@ -69,5 +73,16 @@ export const deployment = pgTable("deployments", {
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 
+export const aglTransaction = pgTable("agl_transactions", {
+  id: integer("id").primaryKey().generatedByDefaultAsIdentity(),
+  userId: text("user_id").notNull().references(() => user.id, { onDelete: "cascade" }),
+  txHash: text("tx_hash").notNull().unique(),
+  type: text("type").notNull(),
+  aglAmount: text("agl_amount").notNull(),
+  creditsAdded: integer("credits_added").default(0),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
 export type User = typeof user.$inferSelect;
 export type Session = typeof session.$inferSelect;
+export type AglTransaction = typeof aglTransaction.$inferSelect;

@@ -1,7 +1,7 @@
 import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { router } from "expo-router";
-import React from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import {
   Platform,
   Pressable,
@@ -15,6 +15,17 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useAuth } from "@/context/AuthContext";
 import { AGENTS, useIDE } from "@/context/IDEContext";
 import { useColors } from "@/hooks/useColors";
+import { AglPanel } from "@/components/AglPanel";
+import { API_URL, fetchWithAuth } from "@/lib/api";
+
+interface AglStatus {
+  wallet: string | null;
+  onChainBalance: number;
+  tier: "free" | "pro" | "enterprise";
+  credits: number;
+  subscriptionExpiresAt: string | null;
+  treasury: string | null;
+}
 
 const QUICK_ACTIONS = [
   { icon: "code" as const, label: "Editor", route: "/(tabs)/editor" as const },
@@ -36,6 +47,49 @@ export default function DashboardScreen() {
   const insets = useSafeAreaInsets();
   const { user, signOut } = useAuth();
   const { setSelectedAgentId } = useIDE();
+  const [aglStatus, setAglStatus] = useState<AglStatus | null>(null);
+  const [aglLoading, setAglLoading] = useState(true);
+
+  const fetchAglStatus = useCallback(async () => {
+    try {
+      const res = await fetchWithAuth("/agl/status");
+      if (res.ok) setAglStatus(await res.json());
+    } catch (_) {}
+    finally { setAglLoading(false); }
+  }, []);
+
+  useEffect(() => { fetchAglStatus(); }, [fetchAglStatus]);
+
+  const handleConnectWallet = useCallback(async (address: string) => {
+    const res = await fetchWithAuth("/agl/wallet", {
+      method: "POST",
+      body: JSON.stringify({ address }),
+    });
+    if (!res.ok) { const d = await res.json(); throw new Error(d.error ?? "Failed"); }
+    await fetchAglStatus();
+  }, [fetchAglStatus]);
+
+  const handleTopUp = useCallback(async (txHash: string) => {
+    const res = await fetchWithAuth("/agl/credits/topup", {
+      method: "POST",
+      body: JSON.stringify({ txHash }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error ?? "Top-up failed");
+    await fetchAglStatus();
+    return data;
+  }, [fetchAglStatus]);
+
+  const handleSubscribe = useCallback(async (txHash: string) => {
+    const res = await fetchWithAuth("/agl/subscribe", {
+      method: "POST",
+      body: JSON.stringify({ txHash }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error ?? "Subscribe failed");
+    await fetchAglStatus();
+    return data;
+  }, [fetchAglStatus]);
 
   const s = StyleSheet.create({
     container: { flex: 1, backgroundColor: colors.background },
@@ -206,6 +260,17 @@ export default function DashboardScreen() {
             <Text style={s.featureDesc}>{f.desc}</Text>
           </View>
         ))}
+      </View>
+
+      <Text style={[s.sectionLabel, { marginBottom: 12 }]}>AGL TOKEN</Text>
+      <View style={{ marginBottom: 32 }}>
+        <AglPanel
+          status={aglStatus}
+          loading={aglLoading}
+          onConnectWallet={handleConnectWallet}
+          onTopUp={handleTopUp}
+          onSubscribe={handleSubscribe}
+        />
       </View>
     </ScrollView>
   );

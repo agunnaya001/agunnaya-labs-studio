@@ -1,5 +1,10 @@
 import { Router } from "express";
 import Anthropic from "@anthropic-ai/sdk";
+import { auth } from "../lib/auth";
+import { getAglBalance, getTierFromBalance, CREDITS, type AglTier } from "../lib/agl";
+import { db } from "@workspace/db";
+import { user } from "@workspace/db";
+import { eq } from "drizzle-orm";
 
 const router = Router();
 
@@ -14,6 +19,33 @@ const agents: Record<string, string> = {
   "doc-writer": `You are a technical documentation specialist for smart contracts. Generate comprehensive documentation including function descriptions, parameter explanations, and usage examples. Create NatSpec comments for Solidity code.`,
 };
 
+const PREMIUM_AGENTS = new Set(["auditor", "gas-optimizer"]);
+
+async function getSessionUser(req: import("express").Request) {
+  const headers = new Headers();
+  for (const [k, v] of Object.entries(req.headers)) {
+    if (v) headers.set(k, Array.isArray(v) ? v.join(", ") : v);
+  }
+  const session = await auth.api.getSession({ headers });
+  if (!session?.user?.id) return null;
+  const [dbUser] = await db.select().from(user).where(eq(user.id, session.user.id)).limit(1);
+  return dbUser ?? null;
+}
+
+async function getEffectiveTier(u: NonNullable<Awaited<ReturnType<typeof getSessionUser>>>): Promise<AglTier> {
+  let onChainTier: AglTier = "free";
+  if (u.walletAddress) {
+    try {
+      const bal = await getAglBalance(u.walletAddress);
+      onChainTier = getTierFromBalance(bal);
+    } catch (_) {}
+  }
+  const subActive = u.subscriptionExpiresAt && u.subscriptionExpiresAt > new Date();
+  if (onChainTier === "enterprise" || onChainTier === "pro") return onChainTier;
+  if (subActive) return "pro";
+  return (u.aglTier as AglTier) ?? "free";
+}
+
 router.post("/chat", async (req, res) => {
   try {
     const { agentId, messages, contractCode } = req.body as {
@@ -25,6 +57,39 @@ router.post("/chat", async (req, res) => {
     const systemPrompt = agents[agentId];
     if (!systemPrompt) {
       res.status(400).json({ error: "Agent not found" });
+      return;
+    }
+
+    const u = await getSessionUser(req);
+    if (!u) {
+      res.status(401).json({ error: "Authentication required to use AI agents" });
+      return;
+    }
+
+    const tier = await getEffectiveTier(u);
+    const creditCost = PREMIUM_AGENTS.has(agentId) ? CREDITS.audit : CREDITS.chat;
+
+    if (tier === "free") {
+      const credits = u.aglCredits ?? 0;
+      if (credits < creditCost) {
+        res.status(402).json({
+          error: "Insufficient credits",
+          message: `This agent costs ${creditCost} credits. You have ${credits}. Transfer AGL to top up, or hold ≥ 100 AGL for unlimited access.`,
+          credits,
+          cost: creditCost,
+          upgradeRequired: true,
+        });
+        return;
+      }
+      await db.update(user).set({ aglCredits: credits - creditCost }).where(eq(user.id, u.id));
+    }
+
+    if (PREMIUM_AGENTS.has(agentId) && tier === "free") {
+      res.status(402).json({
+        error: "Pro tier required for this agent",
+        message: "The Auditor and Gas Optimizer agents require PRO tier (≥ 100 AGL).",
+        upgradeRequired: true,
+      });
       return;
     }
 

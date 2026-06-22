@@ -1,7 +1,14 @@
 import { Router } from "express";
 import solc from "solc";
+import { auth } from "../lib/auth";
+import { getAglBalance, getTierFromBalance, type AglTier } from "../lib/agl";
+import { db } from "@workspace/db";
+import { user } from "@workspace/db";
+import { eq } from "drizzle-orm";
 
 const router = Router();
+
+const MAINNET_CHAIN_IDS = new Set([8453, 1, 42161, 10, 137]);
 
 const chains: Record<number, { name: string; rpc: string; explorer: string }> =
   {
@@ -42,6 +49,31 @@ const chains: Record<number, { name: string; rpc: string; explorer: string }> =
     },
   };
 
+async function getSessionUser(req: import("express").Request) {
+  const headers = new Headers();
+  for (const [k, v] of Object.entries(req.headers)) {
+    if (v) headers.set(k, Array.isArray(v) ? v.join(", ") : v);
+  }
+  const session = await auth.api.getSession({ headers });
+  if (!session?.user?.id) return null;
+  const [dbUser] = await db.select().from(user).where(eq(user.id, session.user.id)).limit(1);
+  return dbUser ?? null;
+}
+
+async function getEffectiveTier(u: NonNullable<Awaited<ReturnType<typeof getSessionUser>>>): Promise<AglTier> {
+  let onChainTier: AglTier = "free";
+  if (u.walletAddress) {
+    try {
+      const bal = await getAglBalance(u.walletAddress);
+      onChainTier = getTierFromBalance(bal);
+    } catch (_) {}
+  }
+  const subActive = u.subscriptionExpiresAt && u.subscriptionExpiresAt > new Date();
+  if (onChainTier === "enterprise" || onChainTier === "pro") return onChainTier;
+  if (subActive) return "pro";
+  return (u.aglTier as AglTier) ?? "free";
+}
+
 router.post("/deploy", async (req, res) => {
   try {
     const {
@@ -60,6 +92,23 @@ router.post("/deploy", async (req, res) => {
     if (!chain) {
       res.json({ status: "error", message: `Chain ${chainId} not supported` });
       return;
+    }
+
+    if (MAINNET_CHAIN_IDS.has(chainId)) {
+      const u = await getSessionUser(req);
+      if (!u) {
+        res.status(401).json({ status: "error", message: "Authentication required for mainnet deployment" });
+        return;
+      }
+      const tier = await getEffectiveTier(u);
+      if (tier === "free") {
+        res.status(402).json({
+          status: "error",
+          message: `Mainnet deployment on ${chain.name} requires PRO tier. Hold ≥ 100 AGL or subscribe with 50 AGL/month.`,
+          upgradeRequired: true,
+        });
+        return;
+      }
     }
 
     const input = {
