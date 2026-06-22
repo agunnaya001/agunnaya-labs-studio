@@ -91,8 +91,8 @@ export default function ChatScreen() {
           if (data === "[DONE]") continue;
           try {
             const parsed = JSON.parse(data);
-            if (parsed.content) {
-              fullContent += parsed.content;
+            if (parsed.text) {
+              fullContent += parsed.text;
               if (!assistantAdded) {
                 setShowTyping(false);
                 setMessages((prev) => [...prev, { id: uid(), role: "assistant", content: fullContent }]);
