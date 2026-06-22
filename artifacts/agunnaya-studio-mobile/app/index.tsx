@@ -11,15 +11,24 @@ export default function IndexScreen() {
 
   if (loading) {
     return (
-      <View style={[StyleSheet.absoluteFill, { backgroundColor: colors.background, alignItems: "center", justifyContent: "center" }]}>
+      <View
+        style={[
+          StyleSheet.absoluteFill,
+          {
+            backgroundColor: colors.background,
+            alignItems: "center",
+            justifyContent: "center",
+          },
+        ]}
+      >
         <ActivityIndicator size="large" color={colors.primary} />
       </View>
     );
   }
 
   if (user) {
-    return <Redirect href="/(tabs)/editor" />;
+    return <Redirect href="/(tabs)/dashboard" />;
   }
 
-  return <Redirect href="/(auth)/sign-in" />;
+  return <Redirect href="/landing" />;
 }
