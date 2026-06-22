@@ -4,6 +4,9 @@ import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { authClient } from '@/lib/auth-client'
+import { Logo } from '@/components/Logo'
+import { FeatureRecommendations } from '@/components/FeatureRecommendations'
+import { ToastNotification, Toast } from '@/components/ToastNotification'
 
 interface Project {
   id: number
@@ -58,6 +61,17 @@ export default function Dashboard() {
   const [projects, setProjects] = useState<Project[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [showNewProject, setShowNewProject] = useState(false)
+  const [toasts, setToasts] = useState<Toast[]>([])
+
+  const addToast = (message: string, type: Toast['type'] = 'info', duration?: number) => {
+    const id = Math.random().toString(36).slice(2)
+    const toast: Toast = { id, message, type, duration }
+    setToasts((prev) => [...prev, toast])
+  }
+
+  const dismissToast = (id: string) => {
+    setToasts((prev) => prev.filter((t) => t.id !== id))
+  }
 
   useEffect(() => {
     const checkAuth = async () => {
@@ -99,15 +113,18 @@ export default function Dashboard() {
   return (
     <div className="min-h-screen bg-[var(--bg)] text-[var(--text-primary)]">
       {/* Header */}
-      <header className="border-b border-[var(--border-subtle)] bg-[var(--bg-secondary)]">
+      <header className="border-b border-[var(--border-subtle)] bg-[var(--bg-secondary)] sticky top-0 z-50">
         <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="font-display text-2xl font-bold text-[var(--green)] tracking-wider">
-              AGUNNAYA
+            <Logo size="md" animated={true} />
+            <div>
+              <div className="font-display text-2xl font-bold text-[var(--green)] tracking-wider">
+                AGUNNAYA
+              </div>
+              <span className="text-sm text-[var(--text-dim)] uppercase tracking-wider">
+                Labs Studio
+              </span>
             </div>
-            <span className="text-sm text-[var(--text-dim)] uppercase tracking-wider">
-              Labs Studio
-            </span>
           </div>
           <div className="flex items-center gap-4">
             <span className="text-sm text-[var(--text-dim)]">
@@ -260,8 +277,21 @@ export default function Dashboard() {
               </div>
             </div>
           </div>
+
+          {/* Feature Recommendations */}
+          <div>
+            <h2 className="font-display text-2xl font-bold mb-6">Recommended For You</h2>
+            <FeatureRecommendations
+              onSelect={(id) => {
+                addToast(`Loading recommendation: ${id}`, 'info')
+              }}
+            />
+          </div>
         </div>
       </main>
+
+      {/* Toast Notifications */}
+      <ToastNotification toasts={toasts} onDismiss={dismissToast} />
     </div>
   )
 }

@@ -3,6 +3,7 @@
 import Link from 'next/link'
 import { useEffect, useState } from 'react'
 import { authClient } from '@/lib/auth-client'
+import { Logo } from '@/components/Logo'
 
 export default function LandingPage() {
   const [isAuthenticated, setIsAuthenticated] = useState(false)
@@ -32,12 +33,15 @@ export default function LandingPage() {
       <header className="border-b border-[var(--border-subtle)] bg-[var(--bg-secondary)] sticky top-0 z-50">
         <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="font-display text-2xl font-bold text-[var(--green)] tracking-wider">
-              AGUNNAYA
+            <Logo size="md" animated={true} />
+            <div>
+              <div className="font-display text-2xl font-bold text-[var(--green)] tracking-wider">
+                AGUNNAYA
+              </div>
+              <span className="text-sm text-[var(--text-dim)] uppercase tracking-wider">
+                Labs Studio
+              </span>
             </div>
-            <span className="text-sm text-[var(--text-dim)] uppercase tracking-wider">
-              Labs Studio
-            </span>
           </div>
           <div className="flex items-center gap-4">
             {isAuthenticated ? (

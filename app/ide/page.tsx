@@ -8,6 +8,8 @@ import { DeployPane } from '@/components/DeployPane'
 import { ChatMessages } from '@/components/ChatMessages'
 import { QuickPrompts } from '@/components/QuickPrompts'
 import { ToastNotification, Toast } from '@/components/ToastNotification'
+import { ContractPreview } from '@/components/ContractPreview'
+import { Logo } from '@/components/Logo'
 import { defaultSolidityCode, extractContractName } from '@/lib/solidity'
 import { getAgent } from '@/lib/agents'
 import { requestAccount, getCurrentChain, switchChain, getConnectedAccount } from '@/lib/wallet'
@@ -273,12 +275,15 @@ export default function Home() {
       {/* Header */}
       <header className="flex items-center gap-4 border-b border-[var(--border-subtle)] px-4 py-3 bg-[var(--bg-secondary)]">
         <div className="flex items-center gap-3 flex-1">
-          <div className="font-display text-xl font-bold text-[var(--green)] tracking-wider">
-            AGUNNAYA
+          <Logo size="sm" animated={true} />
+          <div>
+            <div className="font-display text-xl font-bold text-[var(--green)] tracking-wider">
+              AGUNNAYA
+            </div>
+            <span className="text-xs text-[var(--text-dim)] uppercase tracking-wider">
+              AI Studio
+            </span>
           </div>
-          <span className="text-xs text-[var(--text-dim)] uppercase tracking-wider">
-            AI Studio
-          </span>
         </div>
         <div className="flex items-center gap-2">
           <span className="text-xs text-[var(--text-dim)] font-mono">
@@ -345,10 +350,10 @@ export default function Home() {
           </div>
         </div>
 
-        {/* Right: Agents & Deploy */}
-        <div className="w-64 flex flex-col gap-3">
+        {/* Right: Agents, Deploy & Preview */}
+        <div className="w-72 flex flex-col gap-3">
           {/* Agent Selector */}
-          <div className="flex-1 flex flex-col min-h-0 bg-[var(--bg-secondary)] rounded border border-[var(--border-subtle)] overflow-hidden">
+          <div className="h-64 flex flex-col min-h-0 bg-[var(--bg-secondary)] rounded border border-[var(--border-subtle)] overflow-hidden">
             <div className="px-3 py-2 border-b border-[var(--border-subtle)]">
               <span className="text-xs font-mono text-[var(--text-dim)] uppercase tracking-wider">
                 AI Agents
@@ -359,8 +364,13 @@ export default function Home() {
             </div>
           </div>
 
+          {/* Contract Preview */}
+          <div className="h-48 min-h-0">
+            <ContractPreview abi={compiledAbi} />
+          </div>
+
           {/* Deploy Panel */}
-          <div className="h-80 min-h-0">
+          <div className="h-72 min-h-0">
             <DeployPane
               isConnected={!!walletAddress}
               address={walletAddress}

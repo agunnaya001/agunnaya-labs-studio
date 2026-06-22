@@ -40,7 +40,6 @@ export async function POST(request: NextRequest) {
       system: systemPrompt,
       messages: formattedMessages,
       temperature: 0.7,
-      max_tokens: 2000,
     })
 
     // Convert to a readable stream
