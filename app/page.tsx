@@ -1,382 +1,267 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { Editor } from '@/components/Editor'
-import { Diagnostics } from '@/components/Diagnostics'
-import { AgentGrid } from '@/components/AgentGrid'
-import { DeployPane } from '@/components/DeployPane'
-import { ChatMessages } from '@/components/ChatMessages'
-import { QuickPrompts } from '@/components/QuickPrompts'
-import { ToastNotification, Toast } from '@/components/ToastNotification'
-import { defaultSolidityCode, extractContractName } from '@/lib/solidity'
-import { getAgent } from '@/lib/agents'
-import { requestAccount, getCurrentChain, switchChain, getConnectedAccount } from '@/lib/wallet'
+import Link from 'next/link'
+import { useRouter } from 'next/navigation'
+import { authClient } from '@/lib/auth-client'
 
-interface Diagnostic {
-  message: string
-  severity: 'error' | 'warning' | 'info'
+interface Project {
+  id: number
+  name: string
+  code: string
+  description?: string
+  createdAt: string
+  updatedAt: string
 }
 
-interface ChatMessage {
-  role: 'user' | 'assistant'
-  content: string
-  isStreaming?: boolean
-}
+const features = [
+  {
+    id: 'apps',
+    title: 'Generate Apps',
+    description: 'Build web applications with AI assistance and Web3 integration',
+    icon: '📱',
+    color: 'from-blue-500 to-cyan-500',
+  },
+  {
+    id: 'contracts',
+    title: 'Smart Contracts',
+    description: 'Develop, audit, and deploy Solidity contracts on Base',
+    icon: '⚙️',
+    color: 'from-green-500 to-emerald-500',
+  },
+  {
+    id: 'games',
+    title: 'Generate Games',
+    description: 'Create blockchain games with multiplayer support',
+    icon: '🎮',
+    color: 'from-purple-500 to-pink-500',
+  },
+  {
+    id: 'deploy',
+    title: 'Deploy to Base',
+    description: 'One-click deployment to Base mainnet with gas optimization',
+    icon: '🚀',
+    color: 'from-yellow-500 to-orange-500',
+  },
+  {
+    id: 'monetize',
+    title: 'Monetize with AGL',
+    description: 'Integrate native monetization and token economics',
+    icon: '💰',
+    color: 'from-red-500 to-rose-500',
+  },
+]
 
-interface Deployment {
-  chainId: number
-  address: string
-  txHash: string
-  timestamp: string
-}
+export default function Dashboard() {
+  const router = useRouter()
+  const [session, setSession] = useState<any>(null)
+  const [projects, setProjects] = useState<Project[]>([])
+  const [isLoading, setIsLoading] = useState(true)
+  const [showNewProject, setShowNewProject] = useState(false)
 
-export default function Home() {
-  const [code, setCode] = useState(defaultSolidityCode)
-  const [diagnostics, setDiagnostics] = useState<Diagnostic[]>([])
-  const [isCompiling, setIsCompiling] = useState(false)
-  const [selectedAgentId, setSelectedAgentId] = useState('architect')
-  const [compiledAbi, setCompiledAbi] = useState<unknown[]>([])
-  
-  // Wallet & Deploy
-  const [walletAddress, setWalletAddress] = useState<string | null>(null)
-  const [chainId, setChainId] = useState<number | null>(null)
-  const [isConnecting, setIsConnecting] = useState(false)
-  const [isDeploying, setIsDeploying] = useState(false)
-  const [deployments, setDeployments] = useState<Deployment[]>([])
-  
-  // Chat
-  const [chatMessages, setChatMessages] = useState<ChatMessage[]>([])
-  const [chatInput, setChatInput] = useState('')
-  const [isChatLoading, setIsChatLoading] = useState(false)
-  
-  // Toast notifications
-  const [toasts, setToasts] = useState<Toast[]>([])
-
-  const addToast = (message: string, type: Toast['type'] = 'info', duration?: number) => {
-    const id = Math.random().toString(36).slice(2)
-    const toast: Toast = { id, message, type, duration }
-    setToasts((prev) => [...prev, toast])
-  }
-
-  const dismissToast = (id: string) => {
-    setToasts((prev) => prev.filter((t) => t.id !== id))
-  }
-
-  // Initialize wallet connection on mount
   useEffect(() => {
-    const initWallet = async () => {
-      const account = await getConnectedAccount()
-      if (account) {
-        setWalletAddress(account)
-        const chain = await getCurrentChain()
-        if (chain) setChainId(chain)
-      }
-    }
-    initWallet()
-  }, [])
-
-  // Auto-compile on code change
-  useEffect(() => {
-    const timer = setTimeout(async () => {
-      setIsCompiling(true)
+    const checkAuth = async () => {
       try {
-        const response = await fetch('/api/compile', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ code }),
-        })
-        const result = await response.json()
-        setDiagnostics([...(result.errors || []), ...(result.warnings || [])])
-        if (result.abi) {
-          setCompiledAbi(result.abi)
+        const { data } = await authClient.getSession()
+        if (!data) {
+          router.push('/sign-in')
+          return
         }
+        setSession(data)
+
+        // TODO: Fetch projects from database
+        // const projects = await getProjects()
+        // setProjects(projects)
       } catch (error) {
-        console.error('[v0] Compilation error:', error)
-        setDiagnostics([
-          {
-            message: 'Failed to compile contract',
-            severity: 'error',
-          },
-        ])
+        console.error('[v0] Auth error:', error)
+        router.push('/sign-in')
       } finally {
-        setIsCompiling(false)
+        setIsLoading(false)
       }
-    }, 500)
-
-    return () => clearTimeout(timer)
-  }, [code])
-
-  const handleConnectWallet = async () => {
-    setIsConnecting(true)
-    try {
-      const account = await requestAccount()
-      if (account) {
-        setWalletAddress(account)
-        const chain = await getCurrentChain()
-        if (chain) {
-          setChainId(chain)
-          addToast('Wallet connected successfully', 'success')
-        }
-      } else {
-        addToast('Wallet connection cancelled', 'warning')
-      }
-    } catch (error) {
-      console.error('[v0] Wallet error:', error)
-      addToast('Failed to connect wallet', 'error')
-    } finally {
-      setIsConnecting(false)
     }
+
+    checkAuth()
+  }, [router])
+
+  const handleLogout = async () => {
+    await authClient.signOut()
+    router.push('/sign-in')
   }
 
-  const handleChainSwitch = async (newChainId: number) => {
-    try {
-      await switchChain(newChainId)
-      setChainId(newChainId)
-    } catch (error) {
-      console.error('[v0] Chain switch error:', error)
-    }
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-[var(--bg)]">
+        <div className="text-[var(--green)]">Loading...</div>
+      </div>
+    )
   }
-
-  const handleDeploy = async (newChainId: number, contractName: string) => {
-    if (diagnostics.some((d) => d.severity === 'error')) {
-      addToast('Fix compilation errors before deploying', 'error')
-      return
-    }
-
-    setIsDeploying(true)
-    try {
-      const response = await fetch('/api/deploy', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          code,
-          contractName,
-          chainId: newChainId,
-        }),
-      })
-      const result = await response.json()
-      if (result.status === 'error') {
-        addToast(result.message, 'error')
-      } else if (result.txHash) {
-        setDeployments([
-          ...deployments,
-          {
-            chainId: newChainId,
-            address: result.address || '0x...',
-            txHash: result.txHash,
-            timestamp: new Date().toISOString(),
-          },
-        ])
-        addToast(`Deployment initiated on network ${newChainId}`, 'success')
-      }
-    } catch (error) {
-      console.error('[v0] Deploy error:', error)
-      addToast('Deployment failed', 'error')
-    } finally {
-      setIsDeploying(false)
-    }
-  }
-
-  const handleSendChat = async (inputOverride?: string) => {
-    const inputToSend = inputOverride || chatInput
-    if (!inputToSend.trim()) return
-
-    const userMessage: ChatMessage = {
-      role: 'user',
-      content: inputToSend,
-    }
-    setChatMessages([...chatMessages, userMessage])
-    setChatInput('')
-    setIsChatLoading(true)
-
-    try {
-      const response = await fetch('/api/chat', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          agentId: selectedAgentId,
-          messages: [...chatMessages, userMessage],
-          contractCode: code,
-        }),
-      })
-
-      if (!response.ok || !response.body) throw new Error('Chat failed')
-
-      const reader = response.body.getReader()
-      const decoder = new TextDecoder()
-      let fullResponse = ''
-
-      const assistantMessage: ChatMessage = {
-        role: 'assistant',
-        content: '',
-        isStreaming: true,
-      }
-      setChatMessages((prev) => [...prev, assistantMessage])
-
-      while (true) {
-        const { done, value } = await reader.read()
-        if (done) break
-
-        const chunk = decoder.decode(value)
-        const lines = chunk.split('\n')
-
-        for (const line of lines) {
-          if (line.startsWith('data: ')) {
-            try {
-              const data = JSON.parse(line.slice(6))
-              if (data.done) continue
-              if (data.text) {
-                fullResponse += data.text
-                setChatMessages((prev) => {
-                  const updated = [...prev]
-                  const lastMsg = updated[updated.length - 1]
-                  if (lastMsg && lastMsg.role === 'assistant') {
-                    lastMsg.content = fullResponse
-                  }
-                  return updated
-                })
-              }
-            } catch {
-              // Ignore parse errors
-            }
-          }
-        }
-      }
-
-      setChatMessages((prev) => {
-        const updated = [...prev]
-        const lastMsg = updated[updated.length - 1]
-        if (lastMsg && lastMsg.role === 'assistant') {
-          lastMsg.isStreaming = false
-        }
-        return updated
-      })
-    } catch (error) {
-      console.error('[v0] Chat error:', error)
-      setChatMessages((prev) => [
-        ...prev,
-        {
-          role: 'assistant',
-          content: 'Failed to get response from agent',
-        },
-      ])
-    } finally {
-      setIsChatLoading(false)
-    }
-  }
-
-  const selectedAgent = getAgent(selectedAgentId)
-  const contractName = extractContractName(code)
 
   return (
-    <div className="flex h-screen w-screen flex-col bg-[var(--bg)] text-[var(--text-primary)]">
+    <div className="min-h-screen bg-[var(--bg)] text-[var(--text-primary)]">
       {/* Header */}
-      <header className="flex items-center gap-4 border-b border-[var(--border-subtle)] px-4 py-3 bg-[var(--bg-secondary)]">
-        <div className="flex items-center gap-3 flex-1">
-          <div className="font-display text-xl font-bold text-[var(--green)] tracking-wider">
-            AGUNNAYA
+      <header className="border-b border-[var(--border-subtle)] bg-[var(--bg-secondary)]">
+        <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="font-display text-2xl font-bold text-[var(--green)] tracking-wider">
+              AGUNNAYA
+            </div>
+            <span className="text-sm text-[var(--text-dim)] uppercase tracking-wider">
+              Labs Studio
+            </span>
           </div>
-          <span className="text-xs text-[var(--text-dim)] uppercase tracking-wider">
-            AI Studio
-          </span>
-        </div>
-        <div className="flex items-center gap-2">
-          <span className="text-xs text-[var(--text-dim)] font-mono">
-            {contractName}
-          </span>
-          <div className="w-2 h-2 bg-[var(--green)] rounded-full" />
+          <div className="flex items-center gap-4">
+            <span className="text-sm text-[var(--text-dim)]">
+              {session?.user?.email}
+            </span>
+            <button
+              onClick={handleLogout}
+              className="px-3 py-1 text-xs font-mono bg-[var(--bg-tertiary)] text-[var(--text-primary)] rounded border border-[var(--border-subtle)] hover:border-[var(--green)] transition-colors"
+            >
+              Logout
+            </button>
+          </div>
         </div>
       </header>
 
-      {/* Main Layout */}
-      <div className="flex flex-1 overflow-hidden gap-3 p-3">
-        {/* Left: Editor & Diagnostics */}
-        <div className="flex-1 flex flex-col gap-3">
-          <div className="flex-1 min-h-0">
-            <Editor value={code} onChange={setCode} />
-          </div>
-          <div className="h-32 min-h-0">
-            <Diagnostics items={diagnostics} isCompiling={isCompiling} />
-          </div>
+      {/* Main Content */}
+      <main className="max-w-7xl mx-auto px-6 py-12">
+        {/* Welcome Section */}
+        <div className="mb-16">
+          <h1 className="font-display text-5xl font-bold mb-2 text-[var(--green)]">
+            Build Anything With AI
+          </h1>
+          <p className="text-lg text-[var(--text-mid)] max-w-2xl">
+            Choose what you want to create and let AI guide you through every step
+          </p>
         </div>
 
-        {/* Center: Chat */}
-        <div className="w-80 flex flex-col gap-3">
-          <div className="flex-1 flex flex-col min-h-0 bg-[var(--bg-secondary)] rounded border border-[var(--border-subtle)] overflow-hidden">
-            <div className="px-3 py-2 border-b border-[var(--border-subtle)]">
-              <span className="text-xs font-mono text-[var(--text-dim)] uppercase tracking-wider">
-                Chat
-              </span>
-            </div>
-            <ChatMessages messages={chatMessages} isLoading={isChatLoading} />
-            <div className="flex gap-2 p-2 border-t border-[var(--border-subtle)]">
-              <input
-                type="text"
-                value={chatInput}
-                onChange={(e) => setChatInput(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' && !e.shiftKey) {
-                    e.preventDefault()
-                    handleSendChat()
-                  }
-                }}
-                placeholder="Ask agent..."
-                className="flex-1 px-2 py-1 bg-[var(--bg)] text-[var(--text-primary)] text-xs font-mono rounded border border-[var(--border-subtle)] focus:border-[var(--green)] focus:outline-none"
-              />
+        {/* Feature Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 mb-16">
+          {features.map((feature) => (
+            <Link
+              key={feature.id}
+              href="/ide"
+              className="group relative overflow-hidden rounded border border-[var(--border-subtle)] bg-[var(--bg-secondary)] p-6 hover:border-[var(--green)] transition-all hover:bg-[var(--bg-tertiary)] cursor-pointer"
+            >
+              {/* Glow effect on hover */}
+              <div className="absolute inset-0 bg-gradient-to-br from-[var(--green)]/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+
+              <div className="relative z-10">
+                <div className="text-4xl mb-3">{feature.icon}</div>
+                <h3 className="font-bold text-sm mb-2 text-[var(--text-primary)] group-hover:text-[var(--green)] transition-colors">
+                  {feature.title}
+                </h3>
+                <p className="text-xs text-[var(--text-dim)] leading-relaxed">
+                  {feature.description}
+                </p>
+              </div>
+
+              {/* Border glow on hover */}
+              <div className="absolute inset-0 rounded border border-[var(--green)]/0 group-hover:border-[var(--green)]/50 group-hover:shadow-lg group-hover:shadow-[var(--green)]/20 transition-all pointer-events-none" />
+            </Link>
+          ))}
+        </div>
+
+        {/* Recent Projects & Create New */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          {/* Recent Projects */}
+          <div className="lg:col-span-2">
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="font-display text-2xl font-bold">Recent Projects</h2>
               <button
-                onClick={() => handleSendChat()}
-                disabled={isChatLoading || !chatInput.trim()}
-                className="px-2 py-1 bg-[var(--green)] text-[var(--bg)] text-xs font-bold rounded hover:bg-[var(--green-bright)] disabled:opacity-50 transition-all"
+                onClick={() => setShowNewProject(!showNewProject)}
+                className="px-3 py-1 text-xs font-bold bg-[var(--green)] text-[var(--bg)] rounded hover:bg-[var(--green-bright)] transition-colors"
               >
-                Send
+                + New Project
               </button>
             </div>
+
+            {projects.length === 0 ? (
+              <div className="rounded border border-[var(--border-subtle)] bg-[var(--bg-secondary)] p-8 text-center">
+                <div className="text-[var(--text-dim)] mb-3">No projects yet</div>
+                <p className="text-sm text-[var(--text-dim)]">
+                  Click a feature above or create a new project to get started
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {projects.map((project) => (
+                  <Link
+                    key={project.id}
+                    href={`/ide?project=${project.id}`}
+                    className="block rounded border border-[var(--border-subtle)] bg-[var(--bg-secondary)] p-4 hover:border-[var(--green)] hover:bg-[var(--bg-tertiary)] transition-all group"
+                  >
+                    <div className="flex items-start justify-between">
+                      <div className="flex-1 min-w-0">
+                        <h3 className="font-mono font-bold text-sm text-[var(--green)] group-hover:text-[var(--green-bright)] transition-colors truncate">
+                          {project.name}
+                        </h3>
+                        {project.description && (
+                          <p className="text-xs text-[var(--text-dim)] mt-1 line-clamp-2">
+                            {project.description}
+                          </p>
+                        )}
+                      </div>
+                      <div className="text-xs text-[var(--text-dim)] whitespace-nowrap ml-4">
+                        {new Date(project.updatedAt).toLocaleDateString()}
+                      </div>
+                    </div>
+                  </Link>
+                ))}
+              </div>
+            )}
           </div>
 
-          {/* Quick Prompts */}
-          <div className="bg-[var(--bg-secondary)] rounded border border-[var(--border-subtle)] p-2">
-            <div className="text-xs font-mono text-[var(--text-dim)] uppercase tracking-wider mb-2">
-              Quick Prompts
+          {/* Quick Stats / Info */}
+          <div className="space-y-4">
+            <div className="rounded border border-[var(--border-subtle)] bg-[var(--bg-secondary)] p-6">
+              <h3 className="font-bold text-sm mb-4 text-[var(--green)] uppercase tracking-wider">
+                Quick Stats
+              </h3>
+              <div className="space-y-3 text-sm">
+                <div className="flex justify-between items-center">
+                  <span className="text-[var(--text-dim)]">Projects</span>
+                  <span className="font-mono font-bold text-[var(--green)]">{projects.length}</span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-[var(--text-dim)]">Deployments</span>
+                  <span className="font-mono font-bold text-[var(--green)]">0</span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-[var(--text-dim)]">AI Interactions</span>
+                  <span className="font-mono font-bold text-[var(--green)]">0</span>
+                </div>
+              </div>
             </div>
-            <QuickPrompts
-              agentId={selectedAgentId}
-              onSelect={(prompt) => handleSendChat(prompt)}
-            />
+
+            <div className="rounded border border-[var(--border-subtle)] bg-[var(--bg-secondary)] p-6">
+              <h3 className="font-bold text-sm mb-4 text-[var(--green)] uppercase tracking-wider">
+                Resources
+              </h3>
+              <div className="space-y-2 text-sm">
+                <a
+                  href="#"
+                  className="block text-[var(--text-mid)] hover:text-[var(--green)] transition-colors"
+                >
+                  → Documentation
+                </a>
+                <a
+                  href="#"
+                  className="block text-[var(--text-mid)] hover:text-[var(--green)] transition-colors"
+                >
+                  → Base Network Docs
+                </a>
+                <a
+                  href="#"
+                  className="block text-[var(--text-mid)] hover:text-[var(--green)] transition-colors"
+                >
+                  → API Reference
+                </a>
+              </div>
+            </div>
           </div>
         </div>
-
-        {/* Right: Agents & Deploy */}
-        <div className="w-64 flex flex-col gap-3">
-          {/* Agent Selector */}
-          <div className="flex-1 flex flex-col min-h-0 bg-[var(--bg-secondary)] rounded border border-[var(--border-subtle)] overflow-hidden">
-            <div className="px-3 py-2 border-b border-[var(--border-subtle)]">
-              <span className="text-xs font-mono text-[var(--text-dim)] uppercase tracking-wider">
-                AI Agents
-              </span>
-            </div>
-            <div className="flex-1 overflow-y-auto">
-              <AgentGrid selectedId={selectedAgentId} onSelect={setSelectedAgentId} />
-            </div>
-          </div>
-
-          {/* Deploy Panel */}
-          <div className="h-80 min-h-0">
-            <DeployPane
-              isConnected={!!walletAddress}
-              address={walletAddress}
-              chainId={chainId}
-              onConnect={handleConnectWallet}
-              onChainSwitch={handleChainSwitch}
-              onDeploy={handleDeploy}
-              isDeploying={isDeploying}
-              deployments={deployments}
-            />
-          </div>
-        </div>
-      </div>
-
-      {/* Toast Notifications */}
-      <ToastNotification toasts={toasts} onDismiss={dismissToast} />
+      </main>
     </div>
   )
 }
