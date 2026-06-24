@@ -1,0 +1,31 @@
+kind = "slides"
+previewPath = "/agunnaya-pitch-deck/"
+title = "Agunnaya AI Studio — Pitch Deck"
+version = "1.0.0"
+id = "artifacts/agunnaya-pitch-deck"
+router = "path"
+
+[[integratedSkills]]
+name = "slides"
+version = "1.0.0"
+
+[[services]]
+name = "web"
+paths = [ "/agunnaya-pitch-deck/" ]
+localPort = 24405
+
+[services.development]
+run = "pnpm --filter @workspace/agunnaya-pitch-deck run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/agunnaya-pitch-deck", "run", "build" ]
+publicDir = "artifacts/agunnaya-pitch-deck/dist/public"
+serve = "static"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "24405"
+BASE_PATH = "/agunnaya-pitch-deck/"
