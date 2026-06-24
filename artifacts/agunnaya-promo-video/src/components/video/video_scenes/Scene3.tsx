@@ -37,7 +37,7 @@ contract AgunnayaRegistry is Ownable {
       let current = 0;
       const interval = setInterval(() => {
         if (current < codeSnippet.length) {
-          setCharsTyped(prev => prev + 4); // Speed up typing
+          setCharsTyped(prev => prev + 4);
           current += 4;
         } else {
           clearInterval(interval);
@@ -45,6 +45,7 @@ contract AgunnayaRegistry is Ownable {
       }, 30);
       return () => clearInterval(interval);
     }
+    return undefined;
   }, [phase, codeSnippet.length]);
 
   return (
