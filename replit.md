@@ -1,55 +1,68 @@
-# agunnaya-labs-studio
+# agunnaya-labs-studio — Replit / Local Quickstart
+
 One-line description: A Next.js-based web studio for prototyping apps, shared API specs, and typed DB models.
 
-Badges: (optional) Add CI, license, or Replit button badges here.
+Badges: Add CI, license, and Replit/Vercel badges to this file or README.
 
-## Quickstart (local / Replit)
+Purpose
+- This file documents how to run the project locally and on Replit for quick development previews. Production is deployed to Vercel.
+
+Quick overview
+- Monorepo using pnpm workspaces, Next.js for web, Drizzle ORM for DB, Zod for validation, and Orval for OpenAPI-driven codegen.
+- Production: Vercel. Replit: ephemeral dev preview only.
+
 Prerequisites
-- Node.js 24, pnpm, PostgreSQL (dev) or a managed Postgres instance
-- Recommended: pnpm 8+, TypeScript 5.9
+- Node.js 24.x (use node 24 LTS), pnpm (recommended pnpm 8+), PostgreSQL (dev) or a managed Postgres instance.
+- TypeScript 5.9+ recommended.
+- Optional: Docker (if you prefer running Postgres locally).
 
-Local (developer)
-1. Install packages:
+Local (developer) setup
+1. Install dependencies:
    - pnpm install
-2. Dev server (web):
+2. Create a .env (or use environment variables):
+   - Add at minimum the DATABASE_URL and SESSION_SECRET (see .env.example)
+3. Start dev server (Next.js web app):
    - pnpm --filter .migration-backup run dev
-   - Default dev port (Next): 3000 (ensure app uses `process.env.PORT || 3000`)
-3. Typecheck and build:
+   - Default port: 3000. The app reads `process.env.PORT || 3000`.
+4. Typecheck and build:
    - pnpm run typecheck
    - pnpm run build
 
-Replit (recommended setup — dev preview only; production is on Vercel)
-1. Note: Production is deployed to Vercel and the custom domain is configured there. Replit is intended for quick dev previews and experiments.
-2. Create Replit secrets:
-   - DATABASE_URL — Postgres connection string (use a remote DB)
-   - SESSION_SECRET — session/signing secret (if used)
-   - Any other secrets (SENTRY_DSN, etc.)
-3. Example .replit entry (so Replit runs the Next app):
-   ```
+Replit (recommended for dev preview)
+- Note: Replit is for quick dev previews and experiments. Production is on Vercel.
+1. Use a remote Postgres (Replit's hosted DB is not suitable for production). Services: ElephantSQL, Supabase, RDS, Neon, etc.
+2. Add Replit secrets (Secrets UI):
+   - DATABASE_URL — Postgres connection string (remote DB)
+   - SESSION_SECRET — session/signing secret
+   - Other optional secrets: SENTRY_DSN, NEXT_PUBLIC_API_BASE, etc.
+3. Example .replit file (so Replit runs the Next app):
+   ```ini
    run = "pnpm --filter .migration-backup run dev"
    ```
-   If Replit requires an explicit PORT, ensure the app reads `process.env.PORT`.
-4. Add startup commands to Replit's UI or the .replit file above. Use the Secrets UI to set DATABASE_URL and other secrets.
+4. If Replit requires an explicit PORT, ensure the app reads `process.env.PORT`.
+5. Use the Secrets UI to set secrets. Do not commit .env files or secrets to the repo.
 
-## Run & Operate (common commands)
+Run & Operate (common commands)
 - pnpm --filter .migration-backup run dev — run the Next.js app (dev)
-- pnpm run typecheck — full TypeScript typecheck across all packages
+- pnpm run typecheck — full TypeScript typecheck across workspace
 - pnpm run build — typecheck + build all packages
-- pnpm --filter @workspace/api-spec run codegen — regenerate API hooks and Zod schemas from the OpenAPI spec
-- pnpm --filter @workspace/db run push — push DB schema changes (development only)
-- Tests (if present):
-  - pnpm test or pnpm --filter <package> test
+- pnpm --filter lib/api-spec run codegen — regenerate API hooks and Zod schemas from OpenAPI (run this after OpenAPI changes)
+- pnpm --filter lib/db run push — push DB schema changes (development only)
+- Tests:
+  - pnpm test
+  - pnpm --filter <package> test
 
-## Required environment variables
-| Name | Purpose | Example / Notes |
-|------|---------|-----------------|
-| DATABASE_URL | Postgres connection string | postgres://user:pass@host:5432/dbname |
-| SESSION_SECRET | Session/signing secret (if used) | replace-me |
-| NODE_ENV | runtime environment | development | 
+Environment variables (recommended)
+| Name | Required? | Purpose | Example / Notes |
+|------|----------:|---------|-----------------|
+| DATABASE_URL | yes | Postgres connection string | postgres://user:pass@host:5432/dbname |
+| SESSION_SECRET | yes | Session/signing secret | replace-with-long-random-string |
+| NODE_ENV | no | runtime env | development |
+| NEXT_PUBLIC_API_BASE | no | Client-side API base URL (if used) | https://api.example.com or http://localhost:3000 |
 
 Tip: For Replit, add these as secrets in the Secrets UI rather than committing .env.
 
-## Stack
+Stack
 - pnpm workspaces, Node.js 24, TypeScript 5.9
 - Web: Next.js
 - DB: PostgreSQL + Drizzle ORM
@@ -57,56 +70,51 @@ Tip: For Replit, add these as secrets in the Secrets UI rather than committing .
 - API codegen: Orval (OpenAPI -> client + Zod)
 - Build: esbuild (CJS bundles)
 
-## Where things live
-Short map to the important packages and files:
-- lib/api-spec — OpenAPI spec and orval config (source-of-truth for API contracts)
-- lib/db — Drizzle schema and migrations (db push / schema)
+Where things live (quick map)
+- lib/api-spec — OpenAPI spec and orval config (source-of-truth for API)
+- lib/db — Drizzle schema & migrations
 - lib/api-zod — generated/shared Zod schemas
 - lib/api-client-react — React client helpers/hooks
 - .migration-backup — Next.js web app (dev target on Replit)
 
-## Architecture decisions
-- Monorepo with pnpm workspaces to share types and schemas between the web app, API clients, and DB models.
-- API contracts are the source of truth: maintain OpenAPI in lib/api-spec and run orval to regenerate clients and Zod schemas.
-- Drizzle ORM provides strongly-typed DB models; use drizzle-kit for local dev schema pushes.
-- Deploy production to Vercel for edge CDN, with Replit used for ephemeral dev previews.
+Architecture decisions (short)
+- Monorepo to share types/schemas between web, clients, and DB.
+- OpenAPI is the source of truth; run orval after spec changes.
+- Use drizzle-kit for local DB pushes (development only).
+- Deploy production to Vercel; Replit for ephemeral previews.
 
-## Product (high-level)
-- Prototype and showcase web apps built on shared typed API and DB models.
-- Generate and consume OpenAPI-driven typed clients across front-end and back-end.
-- Rapid iteration with codegen-driven contracts and local DB pushes for development.
+Gotchas / Notes
+- Always run codegen after changing the OpenAPI spec:
+  - pnpm --filter lib/api-spec run codegen
+- DB push (drizzle-kit) is for development only; use proper migrations in production.
+- Ensure apps read `process.env.PORT` for hosting platforms.
+- If you see "could not connect to Postgres", verify DATABASE_URL, network/VPC rules, and that the DB accepts remote connections. Some managed DBs require IP allowlisting.
 
-## Gotchas / Notes
-- Always run codegen after changing the OpenAPI spec: pnpm --filter lib/api-spec run codegen
-- DB push is intended for development only; prefer migrations for production.
-- Ensure apps read `process.env.PORT` so hosting platforms (Replit, Vercel) can bind correctly.
-- If you see "could not connect to Postgres", verify DATABASE_URL and network access (Vercel/Replit may require an externally hosted Postgres).
+Troubleshooting (quick checklist)
+1. "listening on port ..." — server started successfully.
+2. DB connection errors:
+   - Check DATABASE_URL and network access (Vercel/Replit require remote DB with open connections).
+   - Try connecting locally with psql or a DB client using the same DATABASE_URL.
+3. Type/schema mismatches:
+   - Run codegen (orval) and rebuild.
+4. Replit-specific:
+   - Confirm secrets are set
+   - Confirm run command in .replit matches the dev script
+5. Reproduce locally using the same DATABASE_URL to rule out Replit networking issues.
 
-## Troubleshooting
-- Common startup logs:
-  - "listening on port ..." — server successfully started
-  - DB connection errors — check DATABASE_URL and ensure the DB accepts remote connections
-- Debugging steps:
-  1. Check Replit logs / console output (or Vercel build logs for production issues)
-  2. Try running locally with the same DATABASE_URL to reproduce
-  3. Ensure codegen and build steps completed if you see type/schema mismatches
-
-## Pointers / Links
+Pointers / Links
 - Codegen config: lib/api-spec/orval.config.{js,ts}
 - DB schema: lib/db/src/schema/index.ts
 - React client: lib/api-client-react
-- CI/Workflows: .github/workflows/* (CI steps for lint/typecheck/build)
-- Vercel: Production is deployed to Vercel; check your project dashboard for the domain and deployment settings.
+- CI/Workflows: .github/workflows/*
+- Vercel: production is deployed to Vercel — check the project dashboard for domain and settings.
 
-## Contributing
-- Preferred workflow: Create a feature branch, run pnpm install, run typecheck and tests, then open a PR.
+Security
+- Never commit secrets. Use Replit Secrets UI or environment variables in CI.
+- Use a long random SESSION_SECRET; rotate if exposed.
 
-## License
-- MIT (see LICENSE file in the repo)
+Contributing
+- Preferred flow: Create a feature branch, run pnpm install, run typecheck and tests, then open a PR.
 
----
-
-If you'd like, I can also:
-- Add a .env.example (I will create this in the repo),
-- Update .replit run command (I will edit the existing .replit to include the run line),
-- Or open a PR instead of committing to main.
+License
+- MIT (see LICENSE)
