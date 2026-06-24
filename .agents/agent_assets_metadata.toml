@@ -1,8 +1,13 @@
 uploads = []
-outputs = []
 
 [[generated]]
 id = "znL3HxJ5KultxmAGWiLfw"
 uri = "file://artifacts/agunnaya-studio-mobile/assets/images/icon.png"
 type = "image"
 title = "agunnaya-mobile-icon"
+
+[[outputs]]
+id = "FCwt4DISLiojZb3BeecbG"
+uri = "file://artifacts/agunnaya-promo-video/public/audio/bg_music.mp3"
+type = "audio"
+title = "background music"
