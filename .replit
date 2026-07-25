@@ -1,1 +1,8 @@
 run = "pnpm --filter .migration-backup run dev"
+modules = ["nodejs-20", "web", "bash"]
+
+[nix]
+channel = "stable-25_05"
+
+[objectStorage]
+defaultBucketID = "replit-objstore-a2062fd0-02bc-41a2-8f48-2a8e437d2664"
