@@ -1,120 +1,88 @@
-# agunnaya-labs-studio — Replit / Local Quickstart
+# Agunnaya Labs Studio — Replit Quickstart
 
-One-line description: A Next.js-based web studio for prototyping apps, shared API specs, and typed DB models.
+AI-powered Solidity IDE with wallet integration, on-chain AGL token gating, and Base mainnet deployment.
 
-Badges: Add CI, license, and Replit/Vercel badges to this file or README.
+## Architecture
 
-Purpose
-- This file documents how to run the project locally and on Replit for quick development previews. Production is deployed to Vercel.
+Multi-artifact pnpm workspace:
 
-Quick overview
-- Monorepo using pnpm workspaces, Next.js for web, Drizzle ORM for DB, Zod for validation, and Orval for OpenAPI-driven codegen.
-- Production: Vercel. Replit: ephemeral dev preview only.
+| Artifact | Path | Port | Description |
+|---|---|---|---|
+| Web App | `artifacts/agunnaya-studio` | 20259 | Vite/React SPA |
+| API Server | `artifacts/api-server` | 8080 | Express + better-auth |
+| Shared DB | `lib/db` | — | Drizzle ORM + PostgreSQL |
+| API Zod | `lib/api-zod` | — | Generated Zod schemas |
+| API Client | `lib/api-client-react` | — | React Query hooks |
 
-Prerequisites
-- Node.js 24.x (use node 24 LTS), pnpm (recommended pnpm 8+), PostgreSQL (dev) or a managed Postgres instance.
-- TypeScript 5.9+ recommended.
-- Optional: Docker (if you prefer running Postgres locally).
+## Running Locally (Replit)
 
-Local (developer) setup
-1. Install dependencies:
-   - pnpm install
-2. Create a .env (or use environment variables):
-   - Add at minimum the DATABASE_URL and SESSION_SECRET (see .env.example)
-3. Start dev server (Next.js web app):
-   - pnpm --filter .migration-backup run dev
-   - Default port: 3000. The app reads `process.env.PORT || 3000`.
-4. Typecheck and build:
-   - pnpm run typecheck
-   - pnpm run build
+The managed workflows start both services automatically:
 
-Replit (recommended for dev preview)
-- Note: Replit is for quick dev previews and experiments. Production is on Vercel.
-1. Use a remote Postgres (Replit's hosted DB is not suitable for production). Services: ElephantSQL, Supabase, RDS, Neon, etc.
-2. Add Replit secrets (Secrets UI):
-   - DATABASE_URL — Postgres connection string (remote DB)
-   - SESSION_SECRET — session/signing secret
-   - Other optional secrets: SENTRY_DSN, NEXT_PUBLIC_API_BASE, etc.
-3. Example .replit file (so Replit runs the Next app):
-   ```ini
-   run = "pnpm --filter .migration-backup run dev"
-   ```
-4. If Replit requires an explicit PORT, ensure the app reads `process.env.PORT`.
-5. Use the Secrets UI to set secrets. Do not commit .env files or secrets to the repo.
+- `artifacts/agunnaya-studio: web` — Vite dev server (port 20259)
+- `artifacts/api-server: API Server` — Express API (port 8080)
 
-Run & Operate (common commands)
-- pnpm --filter .migration-backup run dev — run the Next.js app (dev)
-- pnpm run typecheck — full TypeScript typecheck across workspace
-- pnpm run build — typecheck + build all packages
-- pnpm --filter lib/api-spec run codegen — regenerate API hooks and Zod schemas from OpenAPI (run this after OpenAPI changes)
-- pnpm --filter lib/db run push — push DB schema changes (development only)
-- Tests:
-  - pnpm test
-  - pnpm --filter <package> test
+To install dependencies (web + API only — mobile excluded due to platform constraints):
 
-Environment variables (recommended)
-| Name | Required? | Purpose | Example / Notes |
-|------|----------:|---------|-----------------|
-| DATABASE_URL | yes | Postgres connection string | postgres://user:pass@host:5432/dbname |
-| SESSION_SECRET | yes | Session/signing secret | replace-with-long-random-string |
-| NODE_ENV | no | runtime env | development |
-| NEXT_PUBLIC_API_BASE | no | Client-side API base URL (if used) | https://api.example.com or http://localhost:3000 |
+```bash
+pnpm install \
+  --filter @workspace/agunnaya-studio \
+  --filter @workspace/api-server \
+  --filter @workspace/db \
+  --filter @workspace/api-zod \
+  --filter @workspace/api-client-react
+```
 
-Tip: For Replit, add these as secrets in the Secrets UI rather than committing .env.
+To push the DB schema after changes:
 
-Stack
-- pnpm workspaces, Node.js 24, TypeScript 5.9
-- Web: Next.js
-- DB: PostgreSQL + Drizzle ORM
-- Validation: Zod (v4) + drizzle-zod
-- API codegen: Orval (OpenAPI -> client + Zod)
-- Build: esbuild (CJS bundles)
+```bash
+pnpm --filter @workspace/db run push
+```
 
-Where things live (quick map)
-- lib/api-spec — OpenAPI spec and orval config (source-of-truth for API)
-- lib/db — Drizzle schema & migrations
-- lib/api-zod — generated/shared Zod schemas
-- lib/api-client-react — React client helpers/hooks
-- .migration-backup — Next.js web app (dev target on Replit)
+## Environment Variables / Secrets
 
-Architecture decisions (short)
-- Monorepo to share types/schemas between web, clients, and DB.
-- OpenAPI is the source of truth; run orval after spec changes.
-- Use drizzle-kit for local DB pushes (development only).
-- Deploy production to Vercel; Replit for ephemeral previews.
+| Name | Required | Purpose |
+|---|---|---|
+| `DATABASE_URL` | yes | PostgreSQL connection (auto-provided by Replit DB) |
+| `SESSION_SECRET` | yes | better-auth session signing |
+| `ANTHROPIC_API_KEY` | yes (for AI chat) | Claude model access |
+| `AGL_TOKEN_ADDRESS` | no | Override AGL token address (default: Base mainnet) |
+| `AGL_CREDITS_CONTRACT` | no | Override Credits contract address |
+| `AGL_STAKING_CONTRACT` | no | Override Staking contract address |
+| `AGL_TREASURY_ADDRESS` | no | Override treasury address (default hardcoded) |
+| `AGL_CHAIN_RPC` | no | Override Base RPC URL (default: https://mainnet.base.org) |
 
-Gotchas / Notes
-- Always run codegen after changing the OpenAPI spec:
-  - pnpm --filter lib/api-spec run codegen
-- DB push (drizzle-kit) is for development only; use proper migrations in production.
-- Ensure apps read `process.env.PORT` for hosting platforms.
-- If you see "could not connect to Postgres", verify DATABASE_URL, network/VPC rules, and that the DB accepts remote connections. Some managed DBs require IP allowlisting.
+## On-Chain Contracts (Base Mainnet)
 
-Troubleshooting (quick checklist)
-1. "listening on port ..." — server started successfully.
-2. DB connection errors:
-   - Check DATABASE_URL and network access (Vercel/Replit require remote DB with open connections).
-   - Try connecting locally with psql or a DB client using the same DATABASE_URL.
-3. Type/schema mismatches:
-   - Run codegen (orval) and rebuild.
-4. Replit-specific:
-   - Confirm secrets are set
-   - Confirm run command in .replit matches the dev script
-5. Reproduce locally using the same DATABASE_URL to rule out Replit networking issues.
+| Contract | Address |
+|---|---|
+| AGL Token | `0xEA1221B4d80A89BD8C75248Fae7c176BD1854698` |
+| AGL Credits | `0x13866F31c60822Ff70684213b9727915Ddf2c183` |
+| AGL Staking | `0xd4B61B4876c15e78e0275EbA52cf62D55ED5fD30` |
+| Treasury | `0x725615639B760DAa64b3e794AA49B5A9a8A7632E` |
 
-Pointers / Links
-- Codegen config: lib/api-spec/orval.config.{js,ts}
-- DB schema: lib/db/src/schema/index.ts
-- React client: lib/api-client-react
-- CI/Workflows: .github/workflows/*
-- Vercel: production is deployed to Vercel — check the project dashboard for domain and settings.
+## AGL Token System
 
-Security
-- Never commit secrets. Use Replit Secrets UI or environment variables in CI.
-- Use a long random SESSION_SECRET; rotate if exposed.
+Tier access is based on **held + staked AGL combined**:
 
-Contributing
-- Preferred flow: Create a feature branch, run pnpm install, run typecheck and tests, then open a PR.
+- FREE: 0–99 AGL
+- PRO: ≥ 100 AGL
+- ENTERPRISE: ≥ 1000 AGL
 
-License
-- MIT (see LICENSE)
+**Buy credits**: Users call `purchaseCredits(uint256)` on the Credits contract. AGL is burned, a `CreditsPurchased` event is emitted, and the backend verifies that event to grant credits.
+
+**Subscribe**: Transfer 50 AGL to the treasury address for a 30-day PRO subscription.
+
+## Stack
+
+- Frontend: React 19, Vite 7, Tailwind CSS 4, Wouter, Tanstack Query
+- Backend: Express 5, better-auth, Pino logging
+- DB: PostgreSQL (Replit built-in) + Drizzle ORM
+- Blockchain: Base mainnet, raw JSON-RPC (no ethers.js/wagmi)
+- AI: Anthropic Claude via `@ai-sdk/anthropic`
+- Solidity: `solc` for compilation and deployment
+
+## User Preferences
+
+- No ethers.js or wagmi — use raw JSON-RPC for all on-chain reads
+- Keep contract ABIs and addresses in `artifacts/api-server/src/lib/agl.ts` (backend) and inline constants in frontend components
+- pnpm workspace — always use `--filter` flags when installing specific packages
